@@ -149,6 +149,34 @@ if not df.empty:
     df["semana"] = df["fecha"].dt.to_period("W").astype(str)
 
 # -------------------------
+# KPIs
+# -------------------------
+ventas_total = df["total"].sum() if not df.empty else 0
+costos_total = df["costo"].sum() if not df.empty else 0
+gastos_total = dg["monto"].sum() if not dg.empty else 0
+
+ganancia = ventas_total - costos_total - gastos_total
+
+k1, k2, k3, k4 = st.columns(4)
+k1.metric("Ventas", f"${ventas_total}")
+k2.metric("Costos", f"${costos_total}")
+k3.metric("Gastos", f"${gastos_total}")
+k4.metric("Ganancia Neta", f"${ganancia}")
+
+# -------------------------
+# VENTAS
+# -------------------------
+st.subheader("💸 Venta rápida")
+cols = st.columns(len(productos))
+for i, nombre in enumerate(productos):
+    with cols[i]:
+        st.button(
+            f"{nombre}\n${productos[nombre]['precio']}\nStock: {st.session_state.stock[nombre]}",
+            on_click=agregar_venta,
+            args=(nombre,)
+        )
+
+# -------------------------
 # RESUMEN SEMANAL (TABLA)
 # -------------------------
 if not df.empty:
@@ -161,14 +189,12 @@ else:
     st.info("Sin datos para resumen semanal")
 
 # -------------------------
-# ALERTAS INTELIGENTES
+# RANKING PRODUCTO
 # -------------------------
-for p in productos:
-    if st.session_state.stock[p] <= 5:
-        st.warning(f"⚠️ Stock bajo: {p} ({st.session_state.stock[p]} unidades)")
-
-# -------------------------
-# KPIs
+if not df.empty:
+    top = df["producto"].value_counts().reset_index()
+    top.columns = ["producto","ventas"]
+    st.subheader("
 # -------------------------
 ventas_total = df["total"].sum() if not df.empty else 0
 costos_total = df["costo"].sum() if not df.empty else 0
