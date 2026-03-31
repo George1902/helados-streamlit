@@ -35,11 +35,20 @@ init_state("fecha_caja", None)
 # SIDEBAR CONFIG
 # -------------------------
 st.sidebar.title("⚙️ Configuración")
-for p in productos:
-    productos[p]["precio"] = st.sidebar.number_input(f"Precio {p}", value=productos[p]["precio"], key=f"precio_{p}")
-    productos[p]["costo"] = st.sidebar.number_input(f"Costo {p}", value=productos[p]["costo"], key=f"costo_{p}")
 
-    nuevo_stock = st.sidebar.number_input(f"Stock inicial {p}", value=st.session_state.stock_inicial[p], key=f"stock_{p}")
+for p in productos:
+    productos[p]["precio"] = st.sidebar.number_input(
+        f"Precio {p}", value=productos[p]["precio"], key=f"precio_{p}"
+    )
+    productos[p]["costo"] = st.sidebar.number_input(
+        f"Costo {p}", value=productos[p]["costo"], key=f"costo_{p}"
+    )
+
+    nuevo_stock = st.sidebar.number_input(
+        f"Stock inicial {p}",
+        value=st.session_state.stock_inicial[p],
+        key=f"stock_{p}",
+    )
 
     if not st.session_state.caja_abierta:
         st.session_state.stock_inicial[p] = nuevo_stock
@@ -53,7 +62,6 @@ def abrir_caja():
     st.session_state.caja_abierta = True
     st.session_state.fecha_caja = date.today()
     st.success("🟢 Caja abierta")
-
 
 def cerrar_caja():
     df = pd.DataFrame(st.session_state.ventas)
@@ -69,7 +77,7 @@ def cerrar_caja():
         "costos": costos,
         "gastos": gastos,
         "ganancia": ventas - costos - gastos,
-        "tickets": len(df)
+        "tickets": len(df),
     }
 
     st.session_state.cierres.append(cierre)
@@ -105,7 +113,6 @@ def agregar_venta(nombre):
 
     st.session_state.stock[nombre] -= 1
 
-
 def agregar_gasto():
     if not st.session_state.caja_abierta:
         st.warning("Debes abrir caja")
@@ -121,7 +128,7 @@ def agregar_gasto():
     st.session_state.gastos.append({
         "descripcion": desc,
         "monto": monto,
-        "fecha": datetime.now()
+        "fecha": datetime.now(),
     })
 
     st.session_state.desc_gasto = ""
@@ -137,7 +144,7 @@ col1.button("🟢 Abrir Caja", on_click=abrir_caja)
 col2.button("🔴 Cerrar Caja", on_click=cerrar_caja)
 
 # -------------------------
-# DATAFRAME
+# DATA
 # -------------------------
 df = pd.DataFrame(st.session_state.ventas)
 dg = pd.DataFrame(st.session_state.gastos)
@@ -145,8 +152,14 @@ dc = pd.DataFrame(st.session_state.cierres)
 
 if not df.empty:
     df["fecha"] = pd.to_datetime(df["fecha"])
-    df["dia"] = df["fecha"].dt.date
     df["semana"] = df["fecha"].dt.to_period("W").astype(str)
+
+# -------------------------
+# ALERTAS
+# -------------------------
+for p in productos:
+    if st.session_state.stock[p] <= 5:
+        st.warning(f"⚠️ Stock bajo: {p} ({st.session_state.stock[p]} unidades)")
 
 # -------------------------
 # KPIs
@@ -164,94 +177,63 @@ k3.metric("Gastos", f"${gastos_total}")
 k4.metric("Ganancia Neta", f"${ganancia}")
 
 # -------------------------
-# VENTAS
+# VENTA RAPIDA
 # -------------------------
 st.subheader("💸 Venta rápida")
+
 cols = st.columns(len(productos))
 for i, nombre in enumerate(productos):
     with cols[i]:
-       st.button(
-    f"{nombre}\\n${productos[nombre]['precio']}\\nStock: {st.session_state.stock[nombre]}",
-    on_click=agregar_venta,
-    args=(nombre,),
-    key=f"btn_{nombre}"
-)
+        label = f"""{nombre}
+${productos[nombre]['precio']}
+Stock: {st.session_state.stock[nombre]}"""
 
-# -------------------------
-# RESUMEN SEMANAL (TABLA)
-# -------------------------
-if not df.empty:
-    resumen_semana = df.groupby("semana")["total"].sum().reset_index()
-    resumen_semana.columns = ["Semana", "Ventas Totales"]
-
-    st.subheader("📅 Ventas por semana")
-    st.dataframe(resumen_semana)
-else:
-    st.info("Sin datos para resumen semanal")
-
-# -------------------------
-# RANKING PRODUCTO
-# -------------------------
-if not df.empty:
-    top = df["producto"].value_counts().reset_index()
-    top.columns = ["producto","ventas"]
-    st.subheader("🏆 Ranking productos más vendidos")
-    st.dataframe(top)
-# -------------------------
-ventas_total = df["total"].sum() if not df.empty else 0
-costos_total = df["costo"].sum() if not df.empty else 0
-gastos_total = dg["monto"].sum() if not dg.empty else 0
-
-ganancia = ventas_total - costos_total - gastos_total
-
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Ventas", f"${ventas_total}")
-k2.metric("Costos", f"${costos_total}")
-k3.metric("Gastos", f"${gastos_total}")
-k4.metric("Ganancia Neta", f"${ganancia}")
-
-# -------------------------
-# RANKING PRODUCTO
-# -------------------------
-if not df.empty:
-    top = df["producto"].value_counts().reset_index()
-    top.columns = ["producto","ventas"]
-    st.subheader("🏆 Ranking productos más vendidos")
-    st.dataframe(top)
-
-# -------------------------
-# VENTAS
-# -------------------------
-st.subheader("💸 Venta rápida")
-cols = st.columns(len(productos))
-for i, nombre in enumerate(productos):
-    with cols[i]:
         st.button(
-            f"{nombre}\n${productos[nombre]['precio']}\nStock: {st.session_state.stock[nombre]}",
+            label,
             on_click=agregar_venta,
             args=(nombre,),
             key=f"btn_{nombre}"
         )
 
 # -------------------------
+# RESUMEN SEMANAL
+# -------------------------
+if not df.empty:
+    resumen = df.groupby("semana")["total"].sum().reset_index()
+    resumen.columns = ["Semana", "Ventas Totales"]
+
+    st.subheader("📅 Ventas por semana")
+    st.dataframe(resumen)
+
+# -------------------------
+# RANKING
+# -------------------------
+if not df.empty:
+    top = df["producto"].value_counts().reset_index()
+    top.columns = ["producto", "ventas"]
+
+    st.subheader("🏆 Ranking productos más vendidos")
+    st.dataframe(top)
+
+# -------------------------
 # GASTOS
 # -------------------------
 st.subheader("💸 Registrar gasto")
-colg1, colg2 = st.columns(2)
-colg1.text_input("Descripción", key="desc_gasto")
-colg2.number_input("Monto", min_value=0, key="monto_gasto")
+
+c1, c2 = st.columns(2)
+c1.text_input("Descripción", key="desc_gasto")
+c2.number_input("Monto", min_value=0, key="monto_gasto")
+
 st.button("Agregar gasto", on_click=agregar_gasto)
 
 # -------------------------
 # EXPORTAR
 # -------------------------
 if not df.empty:
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("📤 Exportar ventas", csv, "ventas.csv")
+    st.download_button("📤 Exportar ventas", df.to_csv(index=False), "ventas.csv")
 
 if not dc.empty:
-    csv_cierres = dc.to_csv(index=False).encode("utf-8")
-    st.download_button("📤 Exportar cierres de caja", csv_cierres, "cierres.csv")
+    st.download_button("📤 Exportar cierres", dc.to_csv(index=False), "cierres.csv")
 
 # -------------------------
 # HISTORIAL
@@ -271,3 +253,4 @@ st.dataframe(dc)
 if st.button("♻️ Reset total"):
     st.session_state.clear()
     st.success("Sistema reiniciado")
+    st.rerun()
