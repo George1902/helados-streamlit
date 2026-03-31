@@ -1,55 +1,97 @@
-# 🍦 Sistema de Ventas de Helados PRO
+# 🍦 NEGOCIO HELADOS PRO
 
-Aplicación desarrollada en **Streamlit** para gestionar ventas, stock y análisis de un negocio de helados en tiempo real.
-
----
-
-## 🚀 Demo
-
-*https://helados-app-george-1902.streamlit.app/*
+Sistema de gestión de ventas, inventario y caja desarrollado en **Streamlit**, pensado para negocios reales pequeños (heladerías, kioscos, ventas rápidas).
 
 ---
 
-## 🧠 Funcionalidades
+## 🚀 Características principales
 
-✅ Registro de ventas en un clic
-✅ Control automático de stock
-✅ Cálculo de ganancias
-✅ Reporte diario y mensual
-✅ Punto de equilibrio
-✅ Ranking de productos más vendidos
-✅ Alertas de stock bajo
-✅ Sugerencia de compra automática
-✅ Gráfico de ventas
-✅ Exportación a Excel (CSV)
-✅ Historial completo de ventas
+### 💰 Control de Caja
 
----
+* Apertura y cierre de caja
+* Registro automático de:
 
-## 🛠️ Tecnologías
-
-* Python
-* Streamlit
-* Pandas
+  * Ventas
+  * Costos
+  * Gastos
+  * Ganancia neta
+* Historial de cierres
 
 ---
 
-## 📦 Instalación local
+### 🧾 Ventas en Tiempo Real
 
-1. Clona el repositorio:
+* Botones de **venta rápida** por producto
+* Descuento automático de stock
+* Cálculo inmediato de:
+
+  * Ingresos
+  * Costos
+  * Ganancia
+
+---
+
+### 📦 Control de Inventario
+
+* Stock configurable por producto
+* Descuento automático al vender
+* Persistencia de stock entre aperturas de caja
+
+---
+
+### 📊 Inteligencia de Negocio
+
+* 📅 Ventas por semana (histórico acumulado)
+* 🏆 Ranking de productos más vendidos
+* 📈 Datos basados en historial real (no se borran al cerrar caja)
+
+---
+
+### 💸 Gestión de Gastos
+
+* Registro de gastos diarios
+* Impacto directo en la ganancia
+* Limpieza automática al cerrar caja
+
+---
+
+### 📤 Exportación de Datos
+
+* Exportar ventas en CSV
+* Exportar cierres de caja
+
+---
+
+## 🧠 Cómo funciona internamente
+
+El sistema separa la información en dos niveles:
+
+### 🔹 Operación diaria
+
+* `ventas`
+* `gastos`
+
+👉 Se limpian al cerrar caja
+
+### 🔹 Historial acumulado
+
+* `ventas_historicas`
+* `cierres`
+
+👉 Nunca se borran
+👉 Permiten análisis real del negocio
+
+---
+
+## ▶️ Cómo ejecutar
+
+1. Instalar dependencias:
 
 ```bash
-git clone https://github.com/George1902/helados-streamlit.git
-cd helados-streamlit
+pip install streamlit pandas
 ```
 
-2. Instala dependencias:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Ejecuta la app:
+2. Ejecutar la app:
 
 ```bash
 streamlit run app.py
@@ -57,59 +99,77 @@ streamlit run app.py
 
 ---
 
-## ☁️ Deploy en Streamlit Cloud
-
-1. Ir a: https://streamlit.io/cloud
-2. Click en **"Deploy a public app from GitHub"**
-3. Seleccionar este repositorio
-4. Elegir archivo:
-
-```bash
-app.py
-```
-
-5. Click en **Deploy**
-
----
-
-## 📊 Uso
-
-* Abrir caja antes de vender
-* Registrar ventas con botones rápidos
-* Revisar métricas en tiempo real
-* Exportar datos cuando lo necesites
-
----
-
 ## ⚙️ Configuración
 
-Puedes modificar precios y costos en el archivo:
+Desde el panel lateral puedes:
 
-```python
-productos = {
-    "Cono": {"precio": 1500, "costo": 700},
-    "Paleta": {"precio": 1000, "costo": 400},
-    "Vaso": {"precio": 2000, "costo": 900},
-}
-```
+* Modificar precios
+* Modificar costos
+* Definir stock inicial por producto
 
 ---
 
-## 🔥 Próximas mejoras
+## 📌 Flujo de uso recomendado
 
-* Login de usuarios
-* Base de datos real (Firebase / SQL)
-* App móvil
-* Dashboard avanzado tipo BI
-
----
-
-## 👨‍💻 Autor
-
-Desarrollado por **Jorge Ojeda** 🚀
+1. Configurar precios, costos y stock
+2. Abrir caja
+3. Registrar ventas y gastos
+4. Revisar KPIs
+5. Cerrar caja
+6. Analizar resultados semanales
 
 ---
 
-## 📄 Licencia
+## 🧱 Estructura del sistema
 
-Uso libre para proyectos personales y comerciales.
+* `productos` → catálogo
+* `stock` → inventario actual
+* `ventas` → ventas del día
+* `ventas_historicas` → histórico completo
+* `gastos` → gastos del día
+* `cierres` → resumen por día
+
+---
+
+## ⚠️ Consideraciones
+
+* La información se guarda en memoria (session_state)
+* Si reinicias la app → se pierden datos
+
+👉 Para producción real:
+
+* usar base de datos (SQLite, Firebase, etc.)
+
+---
+
+## 🚀 Próximas mejoras sugeridas
+
+* Predicción de stock
+* Alertas inteligentes automáticas
+* Dashboard avanzado
+* Base de datos persistente
+
+---
+
+## 🧑‍💼 Enfoque
+
+Este sistema está diseñado con mentalidad de:
+
+✔ Control total del negocio
+✔ Simplicidad operativa
+✔ Escalabilidad futura
+
+---
+
+## 🏁 Resultado
+
+Una app ligera pero potente que permite:
+
+* Controlar ventas
+* Gestionar inventario
+* Analizar el negocio
+* Tomar decisiones
+
+---
+
+🔥 Proyecto listo para evolucionar a nivel profesional.
