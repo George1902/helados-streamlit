@@ -25,7 +25,9 @@ def init_state(key, default):
 
 init_state("ventas", [])
 init_state("gastos", [])
+# stock persistente real
 init_state("stock", {k: 50 for k in productos})
+init_state("stock_inicial", {k: 50 for k in productos})
 init_state("caja_abierta", False)
 init_state("cierres", [])
 init_state("fecha_caja", None)
@@ -44,9 +46,12 @@ for p in productos:
 
     # solo actualizar si la caja está cerrada (evita reset durante ventas)
     # SOLO definir stock si nunca se ha modificado manualmente
-    if not st.session_state.caja_abierta and f"stock_lock_{p}" not in st.session_state:
-        st.session_state.stock[p] = nuevo_stock
-        st.session_state[f"stock_init_{p}"] = nuevo_stock
+    # SOLO actualizar stock inicial si caja cerrada
+    if not st.session_state.caja_abierta:
+        st.session_state.stock_inicial[p] = nuevo_stock
+        # solo setear stock si nunca ha habido ventas
+        if len(st.session_state.ventas) == 0 and len(st.session_state.cierres) == 0:
+            st.session_state.stock[p] = nuevo_stock
 
 # -------------------------
 # FUNCIONES CAJA
@@ -107,6 +112,9 @@ def agregar_venta(nombre):
 
     st.session_state.stock[nombre] -= 1
 
+    # marcar que stock ya fue usado
+    st.session_state[f"stock_usado_{nombre}"] = True
+
 
 def agregar_gasto():
     if not st.session_state.caja_abierta:
@@ -151,6 +159,13 @@ if not df.empty:
     df["hora"] = df["fecha"].dt.hour
     df["semana"] = df["fecha"].dt.isocalendar().week
     df["mes"] = df["fecha"].dt.month
+
+# -------------------------
+# ALERTAS INTELIGENTES
+# -------------------------
+for p in productos:
+    if st.session_state.stock[p] <= 5:
+        st.warning(f"⚠️ Stock bajo: {p} ({st.session_state.stock[p]} unidades)")
 
 # -------------------------
 # KPIs
