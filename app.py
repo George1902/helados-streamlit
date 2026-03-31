@@ -24,6 +24,7 @@ def init_state(key, default):
         st.session_state[key] = default
 
 init_state("ventas", [])
+init_state("ventas_historicas", [])
 init_state("gastos", [])
 init_state("stock", {k: 50 for k in productos})
 init_state("stock_inicial", {k: 50 for k in productos})
@@ -74,6 +75,7 @@ def cerrar_caja():
 
     st.session_state.cierres.append(cierre)
 
+    # SOLO limpiar operación del día
     st.session_state.ventas = []
     st.session_state.gastos = []
     st.session_state.caja_abierta = False
@@ -95,13 +97,16 @@ def agregar_venta(nombre):
 
     data = productos[nombre]
 
-    st.session_state.ventas.append({
+    venta = {
         "producto": nombre,
         "total": data["precio"],
         "costo": data["costo"],
         "ganancia": data["precio"] - data["costo"],
         "fecha": datetime.now(),
-    })
+    }
+
+    st.session_state.ventas.append(venta)
+    st.session_state.ventas_historicas.append(venta)
 
     st.session_state.stock[nombre] -= 1
 
@@ -140,13 +145,9 @@ col2.button("🔴 Cerrar Caja", on_click=cerrar_caja)
 # DATAFRAME
 # -------------------------
 df = pd.DataFrame(st.session_state.ventas)
+df_hist = pd.DataFrame(st.session_state.ventas_historicas)
 dg = pd.DataFrame(st.session_state.gastos)
 dc = pd.DataFrame(st.session_state.cierres)
-
-if not df.empty:
-    df["fecha"] = pd.to_datetime(df["fecha"])
-    df["dia"] = df["fecha"].dt.date
-    df["semana"] = df["fecha"].dt.to_period("W").astype(str)
 
 # -------------------------
 # KPIs
@@ -164,73 +165,41 @@ k3.metric("Gastos", f"${gastos_total}")
 k4.metric("Ganancia Neta", f"${ganancia}")
 
 # -------------------------
-# VENTAS
+# VENTA RAPIDA (SOLO UNA VEZ)
 # -------------------------
 st.subheader("💸 Venta rápida")
 cols = st.columns(len(productos))
 for i, nombre in enumerate(productos):
     with cols[i]:
         st.button(
-            f"{nombre}\n${productos[nombre]['precio']}\nStock: {st.session_state.stock[nombre]}",
-            on_click=agregar_venta,
-            args=(nombre,)
-        )
-
-# -------------------------
-# RESUMEN SEMANAL (TABLA)
-# -------------------------
-if not df.empty:
-    resumen_semana = df.groupby("semana")["total"].sum().reset_index()
-    resumen_semana.columns = ["Semana", "Ventas Totales"]
-
-    st.subheader("📅 Ventas por semana")
-    st.dataframe(resumen_semana)
-else:
-    st.info("Sin datos para resumen semanal")
-
-# -------------------------
-# RANKING PRODUCTO
-# -------------------------
-if not df.empty:
-    top = df["producto"].value_counts().reset_index()
-    top.columns = ["producto","ventas"]
-    st.subheader("🏆 Ranking productos más vendidos")
-    st.dataframe(top)
-# -------------------------
-ventas_total = df["total"].sum() if not df.empty else 0
-costos_total = df["costo"].sum() if not df.empty else 0
-gastos_total = dg["monto"].sum() if not dg.empty else 0
-
-ganancia = ventas_total - costos_total - gastos_total
-
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Ventas", f"${ventas_total}")
-k2.metric("Costos", f"${costos_total}")
-k3.metric("Gastos", f"${gastos_total}")
-k4.metric("Ganancia Neta", f"${ganancia}")
-
-# -------------------------
-# RANKING PRODUCTO
-# -------------------------
-if not df.empty:
-    top = df["producto"].value_counts().reset_index()
-    top.columns = ["producto","ventas"]
-    st.subheader("🏆 Ranking productos más vendidos")
-    st.dataframe(top)
-
-# -------------------------
-# VENTAS
-# -------------------------
-st.subheader("💸 Venta rápida")
-cols = st.columns(len(productos))
-for i, nombre in enumerate(productos):
-    with cols[i]:
-        st.button(
-            f"{nombre}\n${productos[nombre]['precio']}\nStock: {st.session_state.stock[nombre]}",
+            f"{nombre}\\n${productos[nombre]['precio']}\\nStock: {st.session_state.stock[nombre]}",
             on_click=agregar_venta,
             args=(nombre,),
             key=f"btn_{nombre}"
         )
+
+# -------------------------
+# RESUMEN SEMANAL (HISTÓRICO)
+# -------------------------
+if not df_hist.empty:
+    df_hist["fecha"] = pd.to_datetime(df_hist["fecha"])
+    df_hist["semana"] = df_hist["fecha"].dt.to_period("W").astype(str)
+
+    resumen_semana = df_hist.groupby("semana")["total"].sum().reset_index()
+    resumen_semana.columns = ["Semana", "Ventas Totales"]
+
+    st.subheader("📅 Ventas por semana")
+    st.dataframe(resumen_semana)
+
+# -------------------------
+# RANKING (HISTÓRICO)
+# -------------------------
+if not df_hist.empty:
+    top = df_hist["producto"].value_counts().reset_index()
+    top.columns = ["producto", "ventas"]
+
+    st.subheader("🏆 Ranking productos más vendidos")
+    st.dataframe(top)
 
 # -------------------------
 # GASTOS
