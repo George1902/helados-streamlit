@@ -63,7 +63,7 @@ def agregar_venta(nombre):
 # -------------------------
 # UI
 # -------------------------
-st.title("🍦 Sistema Helados PRO MAX")
+st.title("🍦 Sistema Helados PRO MAX",layout="centered")
 
 # Caja
 if not st.session_state.caja_abierta:
