@@ -37,7 +37,15 @@ st.sidebar.title("⚙️ Configuración")
 for p in productos:
     productos[p]["precio"] = st.sidebar.number_input(f"Precio {p}", value=productos[p]["precio"], key=f"precio_{p}")
     productos[p]["costo"] = st.sidebar.number_input(f"Costo {p}", value=productos[p]["costo"], key=f"costo_{p}")
-    st.session_state.stock[p] = st.sidebar.number_input(f"Stock inicial {p}", value=st.session_state.stock[p], key=f"stock_{p}")
+    if f"stock_init_{p}" not in st.session_state:
+        st.session_state[f"stock_init_{p}"] = st.session_state.stock[p]
+
+    nuevo_stock = st.sidebar.number_input(f"Stock inicial {p}", value=st.session_state[f"stock_init_{p}"], key=f"stock_{p}")
+
+    # solo actualizar si la caja está cerrada (evita reset durante ventas)
+    if not st.session_state.caja_abierta:
+        st.session_state.stock[p] = nuevo_stock
+        st.session_state[f"stock_init_{p}"] = nuevo_stock
 
 # -------------------------
 # FUNCIONES CAJA
@@ -197,7 +205,9 @@ st.button("Agregar gasto", on_click=agregar_gasto)
 if not df.empty:
     st.subheader("📊 Análisis")
     st.markdown("**Ventas por día**")
-    st.line_chart(df.groupby("dia")["total"].sum())
+    ventas_dia = df.groupby("dia")["total"].sum().reset_index()
+    ventas_dia = ventas_dia.set_index("dia")
+    st.line_chart(ventas_dia)
 
     st.markdown("**Ventas por hora (flujo del día)**")
     st.bar_chart(df.groupby("hora")["total"].sum())
