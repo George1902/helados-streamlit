@@ -25,7 +25,6 @@ def init_state(key, default):
 
 init_state("ventas", [])
 init_state("gastos", [])
-# stock persistente real
 init_state("stock", {k: 50 for k in productos})
 init_state("stock_inicial", {k: 50 for k in productos})
 init_state("caja_abierta", False)
@@ -39,17 +38,11 @@ st.sidebar.title("⚙️ Configuración")
 for p in productos:
     productos[p]["precio"] = st.sidebar.number_input(f"Precio {p}", value=productos[p]["precio"], key=f"precio_{p}")
     productos[p]["costo"] = st.sidebar.number_input(f"Costo {p}", value=productos[p]["costo"], key=f"costo_{p}")
-    if f"stock_init_{p}" not in st.session_state:
-        st.session_state[f"stock_init_{p}"] = st.session_state.stock[p]
 
-    nuevo_stock = st.sidebar.number_input(f"Stock inicial {p}", value=st.session_state[f"stock_init_{p}"], key=f"stock_{p}")
+    nuevo_stock = st.sidebar.number_input(f"Stock inicial {p}", value=st.session_state.stock_inicial[p], key=f"stock_{p}")
 
-    # solo actualizar si la caja está cerrada (evita reset durante ventas)
-    # SOLO definir stock si nunca se ha modificado manualmente
-    # SOLO actualizar stock inicial si caja cerrada
     if not st.session_state.caja_abierta:
         st.session_state.stock_inicial[p] = nuevo_stock
-        # solo setear stock si nunca ha habido ventas
         if len(st.session_state.ventas) == 0 and len(st.session_state.cierres) == 0:
             st.session_state.stock[p] = nuevo_stock
 
@@ -112,9 +105,6 @@ def agregar_venta(nombre):
 
     st.session_state.stock[nombre] -= 1
 
-    # marcar que stock ya fue usado
-    st.session_state[f"stock_usado_{nombre}"] = True
-
 
 def agregar_gasto():
     if not st.session_state.caja_abierta:
@@ -156,24 +146,12 @@ dc = pd.DataFrame(st.session_state.cierres)
 if not df.empty:
     df["fecha"] = pd.to_datetime(df["fecha"])
     df["dia"] = df["fecha"].dt.date
-    df["hora"] = df["fecha"].dt.hour
-    df["semana"] = df["fecha"].dt.isocalendar().week
-    df["mes"] = df["fecha"].dt.month
-
-# -------------------------
-# ALERTAS INTELIGENTES
-# -------------------------
-for p in productos:
-    if st.session_state.stock[p] <= 5:
-        st.warning(f"⚠️ Stock bajo: {p} ({st.session_state.stock[p]} unidades)")
+    df["semana"] = df["fecha"].dt.to_period("W").astype(str)
 
 # -------------------------
 # RESUMEN SEMANAL (TABLA)
 # -------------------------
 if not df.empty:
-    df["fecha"] = pd.to_datetime(df["fecha"])
-    df["semana"] = df["fecha"].dt.to_period("W").astype(str)
-
     resumen_semana = df.groupby("semana")["total"].sum().reset_index()
     resumen_semana.columns = ["Semana", "Ventas Totales"]
 
@@ -181,6 +159,13 @@ if not df.empty:
     st.dataframe(resumen_semana)
 else:
     st.info("Sin datos para resumen semanal")
+
+# -------------------------
+# ALERTAS INTELIGENTES
+# -------------------------
+for p in productos:
+    if st.session_state.stock[p] <= 5:
+        st.warning(f"⚠️ Stock bajo: {p} ({st.session_state.stock[p]} unidades)")
 
 # -------------------------
 # KPIs
@@ -198,15 +183,13 @@ k3.metric("Gastos", f"${gastos_total}")
 k4.metric("Ganancia Neta", f"${ganancia}")
 
 # -------------------------
-# COMPARACIÓN VS AYER
+# RANKING PRODUCTO
 # -------------------------
-if not dc.empty:
-    dc_sorted = dc.sort_values("fecha")
-    if len(dc_sorted) >= 2:
-        hoy = dc_sorted.iloc[-1]
-        ayer = dc_sorted.iloc[-2]
-        diff = hoy["ganancia"] - ayer["ganancia"]
-        st.info(f"📊 Comparación: {diff:+.0f} vs día anterior")
+if not df.empty:
+    top = df["producto"].value_counts().reset_index()
+    top.columns = ["producto","ventas"]
+    st.subheader("🏆 Ranking productos más vendidos")
+    st.dataframe(top)
 
 # -------------------------
 # VENTAS
@@ -229,35 +212,6 @@ colg1, colg2 = st.columns(2)
 colg1.text_input("Descripción", key="desc_gasto")
 colg2.number_input("Monto", min_value=0, key="monto_gasto")
 st.button("Agregar gasto", on_click=agregar_gasto)
-
-# -------------------------
-# GRÁFICOS
-# -------------------------
-if not df.empty:
-    st.subheader("📊 Análisis")
-    st.markdown("**Ventas por día**")
-    ventas_dia = df.groupby("dia")["total"].sum().reset_index()
-    ventas_dia = ventas_dia.set_index("dia")
-    if not ventas_dia.empty:
-        # gráfico eliminado según solicitud
-    else:
-        st.info("Sin datos aún para mostrar")
-
-    st.markdown("**Ventas por hora (flujo del día)**")
-    # -------------------------
-# RANKING PRODUCTO
-# -------------------------
-if not df.empty:
-    top = df["producto"].value_counts().reset_index()
-    top.columns = ["producto","ventas"]
-    st.subheader("🏆 Ranking productos más vendidos")
-    st.dataframe(top)
-
-# -------------------------
-# VENTAS
-
-    st.markdown("**Ganancia por producto**")
-    # gráfico eliminado según solicitud["ganancia"].sum())
 
 # -------------------------
 # EXPORTAR
@@ -286,5 +240,3 @@ st.dataframe(dc)
 # RESET
 # -------------------------
 if st.button("♻️ Reset total"):
-    st.session_state.clear()
-    st.success("Sistema reiniciado")
