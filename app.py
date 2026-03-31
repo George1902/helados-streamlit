@@ -43,7 +43,8 @@ for p in productos:
     nuevo_stock = st.sidebar.number_input(f"Stock inicial {p}", value=st.session_state[f"stock_init_{p}"], key=f"stock_{p}")
 
     # solo actualizar si la caja está cerrada (evita reset durante ventas)
-    if not st.session_state.caja_abierta:
+    # SOLO definir stock si nunca se ha modificado manualmente
+    if not st.session_state.caja_abierta and f"stock_lock_{p}" not in st.session_state:
         st.session_state.stock[p] = nuevo_stock
         st.session_state[f"stock_init_{p}"] = nuevo_stock
 
@@ -207,10 +208,23 @@ if not df.empty:
     st.markdown("**Ventas por día**")
     ventas_dia = df.groupby("dia")["total"].sum().reset_index()
     ventas_dia = ventas_dia.set_index("dia")
-    st.line_chart(ventas_dia)
+    if not ventas_dia.empty:
+        st.line_chart(ventas_dia)
+    else:
+        st.info("Sin datos aún para mostrar")
 
     st.markdown("**Ventas por hora (flujo del día)**")
-    st.bar_chart(df.groupby("hora")["total"].sum())
+    # -------------------------
+# RANKING PRODUCTO
+# -------------------------
+if not df.empty:
+    top = df["producto"].value_counts().reset_index()
+    top.columns = ["producto","ventas"]
+    st.subheader("🏆 Ranking productos más vendidos")
+    st.dataframe(top)
+
+# -------------------------
+# VENTAS
 
     st.markdown("**Ganancia por producto**")
     st.bar_chart(df.groupby("producto")["ganancia"].sum())
