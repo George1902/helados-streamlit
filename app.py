@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="Sistema Helados PRO", layout="centered")
+st.set_page_config(page_title="Helados NEGOCIO PRO", layout="wide")
 
 # -------------------------
-# CONFIGURACIÓN
+# CONFIG
 # -------------------------
 productos = {
     "Cono": {"precio": 1500, "costo": 700},
@@ -13,19 +13,23 @@ productos = {
     "Vaso": {"precio": 2000, "costo": 900},
 }
 
-COSTO_FIJO = 50000  # puedes cambiarlo
-
 # -------------------------
-# ESTADO INICIAL
+# STATE
 # -------------------------
 if "ventas" not in st.session_state:
     st.session_state.ventas = []
+
+if "gastos" not in st.session_state:
+    st.session_state.gastos = []
 
 if "stock" not in st.session_state:
     st.session_state.stock = {k: 50 for k in productos}
 
 if "caja_abierta" not in st.session_state:
     st.session_state.caja_abierta = False
+
+if "historial_cierres" not in st.session_state:
+    st.session_state.historial_cierres = []
 
 # -------------------------
 # FUNCIONES
@@ -34,13 +38,33 @@ def abrir_caja():
     st.session_state.caja_abierta = True
     st.success("Caja abierta")
 
-def cerrar_caja(total, ganancia):
+
+def cerrar_caja():
+    df = pd.DataFrame(st.session_state.ventas)
+    dg = pd.DataFrame(st.session_state.gastos)
+
+    total = df["total"].sum() if not df.empty else 0
+    gastos = dg["monto"].sum() if not dg.empty else 0
+    ganancia = total - gastos
+
+    cierre = {
+        "fecha": datetime.now(),
+        "ventas": total,
+        "gastos": gastos,
+        "ganancia": ganancia
+    }
+
+    st.session_state.historial_cierres.append(cierre)
+    st.session_state.ventas = []
+    st.session_state.gastos = []
     st.session_state.caja_abierta = False
-    st.warning(f"Cierre de caja\nVentas: ${total}\nGanancia: ${ganancia}")
+
+    st.success(f"Caja cerrada | Ganancia: ${ganancia}")
+
 
 def agregar_venta(nombre):
     if not st.session_state.caja_abierta:
-        st.error("Debes abrir caja primero")
+        st.warning("Debes abrir caja")
         return
 
     if st.session_state.stock[nombre] <= 0:
@@ -60,138 +84,94 @@ def agregar_venta(nombre):
     st.session_state.ventas.append(venta)
     st.session_state.stock[nombre] -= 1
 
+
+def agregar_gasto(desc, monto):
+    if not st.session_state.caja_abierta:
+        st.warning("Debes abrir caja")
+        return
+
+    gasto = {
+        "descripcion": desc,
+        "monto": monto,
+        "fecha": datetime.now()
+    }
+
+    st.session_state.gastos.append(gasto)
+
 # -------------------------
 # UI
 # -------------------------
-st.title("🍦 Sistema Helados PRO MAX")
+st.title("🍦 NEGOCIO HELADOS PRO")
 
-# Caja
-if not st.session_state.caja_abierta:
-    st.button("🟢 Abrir caja", on_click=abrir_caja)
-else:
-    st.button(
-        "🔴 Cerrar caja",
-        on_click=cerrar_caja,
-        args=(0, 0)  # luego se actualiza abajo
-    )
+col1, col2 = st.columns(2)
 
-# -------------------------
-# DATOS
-# -------------------------
-df = pd.DataFrame(st.session_state.ventas)
-
-if not df.empty:
-    df["dia"] = df["fecha"].dt.date
-    df["mes"] = df["fecha"].dt.month
-
-    hoy = datetime.now().date()
-    mes_actual = datetime.now().month
-
-    ventas_hoy = df[df["dia"] == hoy]
-    ventas_mes = df[df["mes"] == mes_actual]
-
-    total_hoy = ventas_hoy["total"].sum()
-    ganancia_hoy = ventas_hoy["ganancia"].sum()
-
-    total_mes = ventas_mes["total"].sum()
-    ganancia_mes = ventas_mes["ganancia"].sum()
-
-else:
-    total_hoy = ganancia_hoy = total_mes = ganancia_mes = 0
+col1.button("🟢 Abrir Caja", on_click=abrir_caja)
+col2.button("🔴 Cerrar Caja", on_click=cerrar_caja)
 
 # -------------------------
 # KPIs
 # -------------------------
-st.subheader("📊 Hoy")
-col1, col2 = st.columns(2)
-col1.metric("Ventas", f"${total_hoy}")
-col2.metric("Ganancia", f"${ganancia_hoy}")
+df = pd.DataFrame(st.session_state.ventas)
+dg = pd.DataFrame(st.session_state.gastos)
 
-st.subheader("📅 Mes")
-col3, col4 = st.columns(2)
-col3.metric("Ventas", f"${total_mes}")
-col4.metric("Ganancia", f"${ganancia_mes}")
+ventas_total = df["total"].sum() if not df.empty else 0
+gastos_total = dg["monto"].sum() if not dg.empty else 0
+ganancia = ventas_total - gastos_total
 
-# -------------------------
-# PUNTO DE EQUILIBRIO
-# -------------------------
-if not df.empty:
-    margen_promedio = df["ganancia"].mean()
-else:
-    margen_promedio = 0
+k1, k2, k3 = st.columns(3)
 
-punto_equilibrio = int(COSTO_FIJO / margen_promedio) if margen_promedio else 0
-
-st.subheader("📉 Punto de equilibrio")
-st.info(f"Debes vender aprox {punto_equilibrio} productos")
+k1.metric("Ventas", f"${ventas_total}")
+k2.metric("Gastos", f"${gastos_total}")
+k3.metric("Ganancia", f"${ganancia}")
 
 # -------------------------
 # VENTAS
 # -------------------------
-st.subheader("💸 Ventas rápidas")
-
+st.subheader("💸 Ventas")
 for nombre in productos:
-    st.button(
-        f"{nombre} (${productos[nombre]['precio']}) | Stock: {st.session_state.stock[nombre]}",
-        on_click=agregar_venta,
-        args=(nombre,)
-    )
+    st.button(f"{nombre} (${productos[nombre]['precio']}) | Stock: {st.session_state.stock[nombre]}", on_click=agregar_venta, args=(nombre,))
 
 # -------------------------
-# STOCK BAJO
+# GASTOS
 # -------------------------
-st.subheader("⚠️ Stock bajo")
-for p, s in st.session_state.stock.items():
-    if s <= 5:
-        st.warning(f"{p}: {s}")
+st.subheader("💸 Registrar gasto")
+colg1, colg2 = st.columns(2)
+
+desc = colg1.text_input("Descripción")
+monto = colg2.number_input("Monto", min_value=0)
+
+if st.button("Agregar gasto"):
+    agregar_gasto(desc, monto)
 
 # -------------------------
-# COMPRA SUGERIDA
-# -------------------------
-st.subheader("📦 Compra sugerida")
-for p, s in st.session_state.stock.items():
-    if s < 10:
-        st.write(f"{p}: comprar {20 - s}")
-
-# -------------------------
-# GRÁFICO
+# GRAFICOS
 # -------------------------
 if not df.empty:
-    st.subheader("📈 Ventas por día")
-    ventas_dia = df.groupby("dia")["total"].sum()
-    st.line_chart(ventas_dia)
+    df["dia"] = df["fecha"].dt.date
+    st.line_chart(df.groupby("dia")["total"].sum())
 
 # -------------------------
-# RANKING
+# HISTORIAL
 # -------------------------
-if not df.empty:
-    st.subheader("🏆 Ranking")
-    ranking = df["producto"].value_counts()
-    st.write(ranking)
+st.subheader("📋 Ventas")
+st.dataframe(df)
+
+st.subheader("📋 Gastos")
+st.dataframe(dg)
+
+st.subheader("📦 Cierres de caja")
+st.dataframe(pd.DataFrame(st.session_state.historial_cierres))
 
 # -------------------------
 # EXPORTAR
 # -------------------------
 if not df.empty:
-    st.subheader("📤 Exportar")
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        "Descargar CSV",
-        csv,
-        "ventas_helados.csv",
-        "text/csv"
-    )
-
-# -------------------------
-# HISTORIAL
-# -------------------------
-st.subheader("📋 Historial")
-st.dataframe(df)
+    st.download_button("📤 Exportar ventas", csv, "ventas.csv")
 
 # -------------------------
 # RESET
 # -------------------------
-if st.button("♻️ Reiniciar sistema"):
-    st.session_state.ventas = []
-    st.session_state.stock = {k: 50 for k in productos}
+if st.button("♻️ Reset total"):
+    st.session_state.clear()
     st.success("Sistema reiniciado")
