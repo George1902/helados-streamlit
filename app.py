@@ -168,6 +168,21 @@ for p in productos:
         st.warning(f"⚠️ Stock bajo: {p} ({st.session_state.stock[p]} unidades)")
 
 # -------------------------
+# RESUMEN SEMANAL (TABLA)
+# -------------------------
+if not df.empty:
+    df["fecha"] = pd.to_datetime(df["fecha"])
+    df["semana"] = df["fecha"].dt.to_period("W").astype(str)
+
+    resumen_semana = df.groupby("semana")["total"].sum().reset_index()
+    resumen_semana.columns = ["Semana", "Ventas Totales"]
+
+    st.subheader("📅 Ventas por semana")
+    st.dataframe(resumen_semana)
+else:
+    st.info("Sin datos para resumen semanal")
+
+# -------------------------
 # KPIs
 # -------------------------
 ventas_total = df["total"].sum() if not df.empty else 0
@@ -224,7 +239,7 @@ if not df.empty:
     ventas_dia = df.groupby("dia")["total"].sum().reset_index()
     ventas_dia = ventas_dia.set_index("dia")
     if not ventas_dia.empty:
-        st.line_chart(ventas_dia)
+        # gráfico eliminado según solicitud
     else:
         st.info("Sin datos aún para mostrar")
 
@@ -242,7 +257,7 @@ if not df.empty:
 # VENTAS
 
     st.markdown("**Ganancia por producto**")
-    st.bar_chart(df.groupby("producto")["ganancia"].sum())
+    # gráfico eliminado según solicitud["ganancia"].sum())
 
 # -------------------------
 # EXPORTAR
