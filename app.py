@@ -5,6 +5,42 @@ from datetime import datetime, date
 st.set_page_config(page_title="Helados GERENTE PRO", layout="wide")
 
 # -------------------------
+# DETECCIÓN MÓVIL AUTOMÁTICA
+# -------------------------
+is_mobile = st.session_state.get("is_mobile", False)
+
+st.markdown("""
+<script>
+function detectMobile() {
+    const isMobile = window.innerWidth < 768;
+    const url = new URL(window.location);
+    if (!url.searchParams.get("mobile_detected")) {
+        url.searchParams.set("mobile_detected", isMobile);
+        window.location.replace(url);
+    }
+}
+detectMobile();
+</script>
+""", unsafe_allow_html=True)
+
+params = st.query_params
+if "mobile_detected" in params:
+    st.session_state.is_mobile = params["mobile_detected"] == "true"
+
+# -------------------------
+# ESTILO BOTONES
+# -------------------------
+st.markdown(f"""
+<style>
+button {{
+    height: {"80px" if is_mobile else "60px"};
+    font-size: {"18px" if is_mobile else "14px"};
+    border-radius: 10px;
+}}
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------
 # CONFIG INICIAL
 # -------------------------
 if "productos" not in st.session_state:
@@ -75,7 +111,6 @@ def cerrar_caja():
 
     st.session_state.cierres.append(cierre)
 
-    # SOLO limpiar operación del día
     st.session_state.ventas = []
     st.session_state.gastos = []
     st.session_state.caja_abierta = False
@@ -142,7 +177,7 @@ col1.button("🟢 Abrir Caja", on_click=abrir_caja)
 col2.button("🔴 Cerrar Caja", on_click=cerrar_caja)
 
 # -------------------------
-# DATAFRAME
+# DATA
 # -------------------------
 df = pd.DataFrame(st.session_state.ventas)
 df_hist = pd.DataFrame(st.session_state.ventas_historicas)
@@ -155,37 +190,52 @@ dc = pd.DataFrame(st.session_state.cierres)
 ventas_total = df["total"].sum() if not df.empty else 0
 costos_total = df["costo"].sum() if not df.empty else 0
 gastos_total = dg["monto"].sum() if not dg.empty else 0
-
 ganancia = ventas_total - costos_total - gastos_total
 
-k1, k2, k3, k4 = st.columns(4)
+if is_mobile:
+    k1, k2 = st.columns(2)
+    k3, k4 = st.columns(2)
+else:
+    k1, k2, k3, k4 = st.columns(4)
+
 k1.metric("Ventas", f"${ventas_total}")
 k2.metric("Costos", f"${costos_total}")
 k3.metric("Gastos", f"${gastos_total}")
 k4.metric("Ganancia Neta", f"${ganancia}")
 
 # -------------------------
-# ALERTAS DE STOCK
+# ALERTAS STOCK
 # -------------------------
 for nombre in productos:
     if st.session_state.stock[nombre] <= 5:
-        st.warning(f"⚠️ Stock bajo: {nombre} ({st.session_state.stock[nombre]} unidades)")
+        st.warning(f"⚠️ Stock bajo: {nombre} ({st.session_state.stock[nombre]})")
+
 # -------------------------
-# VENTA RAPIDA (SOLO UNA VEZ)
+# VENTA RAPIDA
 # -------------------------
 st.subheader("💸 Venta rápida")
-cols = st.columns(len(productos))
-for i, nombre in enumerate(productos):
-    with cols[i]:
+
+if is_mobile:
+    for nombre in productos:
         st.button(
             f"{nombre} | ${productos[nombre]['precio']} | Stock: {st.session_state.stock[nombre]}",
             on_click=agregar_venta,
             args=(nombre,),
             key=f"btn_{nombre}"
         )
+else:
+    cols = st.columns(len(productos))
+    for i, nombre in enumerate(productos):
+        with cols[i]:
+            st.button(
+                f"{nombre} | ${productos[nombre]['precio']} | Stock: {st.session_state.stock[nombre]}",
+                on_click=agregar_venta,
+                args=(nombre,),
+                key=f"btn_{nombre}"
+            )
 
 # -------------------------
-# RESUMEN SEMANAL (HISTÓRICO)
+# SEMANAL
 # -------------------------
 if not df_hist.empty:
     df_hist["fecha"] = pd.to_datetime(df_hist["fecha"])
@@ -195,17 +245,17 @@ if not df_hist.empty:
     resumen_semana.columns = ["Semana", "Ventas Totales"]
 
     st.subheader("📅 Ventas por semana")
-    st.dataframe(resumen_semana)
+    st.dataframe(resumen_semana, use_container_width=True)
 
 # -------------------------
-# RANKING (HISTÓRICO)
+# RANKING
 # -------------------------
 if not df_hist.empty:
     top = df_hist["producto"].value_counts().reset_index()
     top.columns = ["producto", "ventas"]
 
     st.subheader("🏆 Ranking productos más vendidos")
-    st.dataframe(top)
+    st.dataframe(top, use_container_width=True)
 
 # -------------------------
 # GASTOS
@@ -231,13 +281,13 @@ if not dc.empty:
 # HISTORIAL
 # -------------------------
 st.subheader("📋 Ventas")
-st.dataframe(df)
+st.dataframe(df, use_container_width=True)
 
 st.subheader("📋 Gastos")
-st.dataframe(dg)
+st.dataframe(dg, use_container_width=True)
 
 st.subheader("📦 Cierres de caja")
-st.dataframe(dc)
+st.dataframe(dc, use_container_width=True)
 
 # -------------------------
 # RESET
