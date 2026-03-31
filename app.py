@@ -240,3 +240,5 @@ st.dataframe(dc)
 # RESET
 # -------------------------
 if st.button("♻️ Reset total"):
+    st.session_state.clear()
+    st.success("Sistema reiniciado")
