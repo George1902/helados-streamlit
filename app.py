@@ -171,9 +171,7 @@ cols = st.columns(len(productos))
 for i, nombre in enumerate(productos):
     with cols[i]:
         st.button(
-            f"{nombre}
-${productos[nombre]['precio']}
-Stock: {st.session_state.stock[nombre]}",
+            f"{nombre}\n${productos[nombre]['precio']}\nStock: {st.session_state.stock[nombre]}",
             on_click=agregar_venta,
             args=(nombre,)
         )
@@ -228,9 +226,7 @@ cols = st.columns(len(productos))
 for i, nombre in enumerate(productos):
     with cols[i]:
         st.button(
-            f"{nombre}
-${productos[nombre]['precio']}
-Stock: {st.session_state.stock[nombre]}",
+            f"{nombre}\n${productos[nombre]['precio']}\nStock: {st.session_state.stock[nombre]}",
             on_click=agregar_venta,
             args=(nombre,),
             key=f"btn_{nombre}"
