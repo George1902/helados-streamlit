@@ -171,7 +171,9 @@ cols = st.columns(len(productos))
 for i, nombre in enumerate(productos):
     with cols[i]:
         st.button(
-            f"{nombre}\n${productos[nombre]['precio']}\nStock: {st.session_state.stock[nombre]}",
+            f"{nombre}
+${productos[nombre]['precio']}
+Stock: {st.session_state.stock[nombre]}",
             on_click=agregar_venta,
             args=(nombre,)
         )
@@ -194,7 +196,8 @@ else:
 if not df.empty:
     top = df["producto"].value_counts().reset_index()
     top.columns = ["producto","ventas"]
-    st.subheader("📅 Ventas por semana")
+    st.subheader("🏆 Ranking productos más vendidos")
+    st.dataframe(top)
 # -------------------------
 ventas_total = df["total"].sum() if not df.empty else 0
 costos_total = df["costo"].sum() if not df.empty else 0
@@ -227,7 +230,8 @@ for i, nombre in enumerate(productos):
         st.button(
             f"{nombre}\n${productos[nombre]['precio']}\nStock: {st.session_state.stock[nombre]}",
             on_click=agregar_venta,
-            args=(nombre,)
+            args=(nombre,),
+            key=f"btn_{nombre}"
         )
 
 # -------------------------
