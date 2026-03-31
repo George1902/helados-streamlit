@@ -194,7 +194,7 @@ else:
 if not df.empty:
     top = df["producto"].value_counts().reset_index()
     top.columns = ["producto","ventas"]
-    st.subheader("
+    st.subheader("📅 Ventas por semana")
 # -------------------------
 ventas_total = df["total"].sum() if not df.empty else 0
 costos_total = df["costo"].sum() if not df.empty else 0
