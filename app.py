@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 
 st.set_page_config(page_title="Helados GERENTE PRO", layout="wide")
 
@@ -19,15 +19,16 @@ productos = st.session_state.productos
 # -------------------------
 # STATE
 # -------------------------
-for key, default in {
-    "ventas": [],
-    "gastos": [],
-    "stock": {k: 50 for k in productos},
-    "caja_abierta": False,
-    "cierres": [],
-}.items():
+def init_state(key, default):
     if key not in st.session_state:
         st.session_state[key] = default
+
+init_state("ventas", [])
+init_state("gastos", [])
+init_state("stock", {k: 50 for k in productos})
+init_state("caja_abierta", False)
+init_state("cierres", [])
+init_state("fecha_caja", None)
 
 # -------------------------
 # SIDEBAR CONFIG
@@ -36,12 +37,15 @@ st.sidebar.title("⚙️ Configuración")
 for p in productos:
     productos[p]["precio"] = st.sidebar.number_input(f"Precio {p}", value=productos[p]["precio"], key=f"precio_{p}")
     productos[p]["costo"] = st.sidebar.number_input(f"Costo {p}", value=productos[p]["costo"], key=f"costo_{p}")
+    st.session_state.stock[p] = st.sidebar.number_input(f"Stock inicial {p}", value=st.session_state.stock[p], key=f"stock_{p}")
 
 # -------------------------
-# FUNCIONES
+# FUNCIONES CAJA
 # -------------------------
 def abrir_caja():
     st.session_state.caja_abierta = True
+    st.session_state.fecha_caja = date.today()
+    st.success("🟢 Caja abierta")
 
 
 def cerrar_caja():
@@ -53,21 +57,26 @@ def cerrar_caja():
     gastos = dg["monto"].sum() if not dg.empty else 0
 
     cierre = {
-        "fecha": datetime.now(),
+        "fecha": st.session_state.fecha_caja,
         "ventas": ventas,
         "costos": costos,
         "gastos": gastos,
-        "ganancia": ventas - costos - gastos
+        "ganancia": ventas - costos - gastos,
+        "tickets": len(df)
     }
 
     st.session_state.cierres.append(cierre)
 
-    # REINICIAR CAJA
     st.session_state.ventas = []
     st.session_state.gastos = []
     st.session_state.caja_abierta = False
+    st.session_state.fecha_caja = None
 
+    st.success("🔴 Caja cerrada y guardada")
 
+# -------------------------
+# FUNCIONES OPERATIVAS
+# -------------------------
 def agregar_venta(nombre):
     if not st.session_state.caja_abierta:
         st.warning("Debes abrir caja")
@@ -108,7 +117,6 @@ def agregar_gasto():
         "fecha": datetime.now()
     })
 
-    # limpiar inputs
     st.session_state.desc_gasto = ""
     st.session_state.monto_gasto = 0
 
@@ -122,10 +130,11 @@ col1.button("🟢 Abrir Caja", on_click=abrir_caja)
 col2.button("🔴 Cerrar Caja", on_click=cerrar_caja)
 
 # -------------------------
-# DATA
+# DATAFRAME
 # -------------------------
 df = pd.DataFrame(st.session_state.ventas)
 dg = pd.DataFrame(st.session_state.gastos)
+dc = pd.DataFrame(st.session_state.cierres)
 
 if not df.empty:
     df["fecha"] = pd.to_datetime(df["fecha"])
@@ -148,6 +157,17 @@ k1.metric("Ventas", f"${ventas_total}")
 k2.metric("Costos", f"${costos_total}")
 k3.metric("Gastos", f"${gastos_total}")
 k4.metric("Ganancia Neta", f"${ganancia}")
+
+# -------------------------
+# COMPARACIÓN VS AYER
+# -------------------------
+if not dc.empty:
+    dc_sorted = dc.sort_values("fecha")
+    if len(dc_sorted) >= 2:
+        hoy = dc_sorted.iloc[-1]
+        ayer = dc_sorted.iloc[-2]
+        diff = hoy["ganancia"] - ayer["ganancia"]
+        st.info(f"📊 Comparación: {diff:+.0f} vs día anterior")
 
 # -------------------------
 # VENTAS
@@ -176,8 +196,13 @@ st.button("Agregar gasto", on_click=agregar_gasto)
 # -------------------------
 if not df.empty:
     st.subheader("📊 Análisis")
+    st.markdown("**Ventas por día**")
     st.line_chart(df.groupby("dia")["total"].sum())
+
+    st.markdown("**Ventas por hora (flujo del día)**")
     st.bar_chart(df.groupby("hora")["total"].sum())
+
+    st.markdown("**Ganancia por producto**")
     st.bar_chart(df.groupby("producto")["ganancia"].sum())
 
 # -------------------------
@@ -186,6 +211,10 @@ if not df.empty:
 if not df.empty:
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("📤 Exportar ventas", csv, "ventas.csv")
+
+if not dc.empty:
+    csv_cierres = dc.to_csv(index=False).encode("utf-8")
+    st.download_button("📤 Exportar cierres de caja", csv_cierres, "cierres.csv")
 
 # -------------------------
 # HISTORIAL
@@ -197,7 +226,7 @@ st.subheader("📋 Gastos")
 st.dataframe(dg)
 
 st.subheader("📦 Cierres de caja")
-st.dataframe(pd.DataFrame(st.session_state.cierres))
+st.dataframe(dc)
 
 # -------------------------
 # RESET
